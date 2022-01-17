@@ -1,8 +1,28 @@
 package main
 
-import {
+import (
+	"flag"
+	"fmt"
+	"net/http"
 
+	transportHTTP "github.com/Open-FiSE/go-rest-api/internal/transport/http"
 	"github.com/golang/glog"
+)
+
+type App struct{}
+
+// Run - sets up the application
+func (app *App) Run() error {
+	glog.Info("Setting up App")
+
+	handler := transportHTTP.NewHandler()
+	handler.SetupRoutes()
+
+	if err := http.ListenAndServe(":3000", handler.Router); err != nil {
+		return fmt.Errorf("failed to setup web server, %v", err)
+	}
+
+	return nil
 }
 
 func main() {
@@ -17,5 +37,11 @@ func main() {
 		glog.Infof("Unable to set logtostderr to true")
 	}
 
-	glog.info("Welcome to the beginning of this project")
+	glog.Info("Welcome to the beginning of this project")
+
+	app := App{}
+	if err := app.Run(); err != nil {
+		glog.Warningf("Failed to start App, %v", err)
+	}
+
 }
