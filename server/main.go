@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Open-FiSE/go-rest-api/internal/database"
 	transportHTTP "github.com/Open-FiSE/go-rest-api/internal/transport/http"
 	"github.com/golang/glog"
 )
@@ -14,6 +15,11 @@ type App struct{}
 // Run - sets up the application
 func (app *App) Run() error {
 	glog.Info("Setting up App")
+
+	_, err := database.NewDatabase()
+	if err != nil {
+		glog.Fatal("Error: Failed to setup database connection")
+	}
 
 	handler := transportHTTP.NewHandler()
 	handler.SetupRoutes()
