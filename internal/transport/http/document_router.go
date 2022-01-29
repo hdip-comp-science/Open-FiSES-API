@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -14,6 +15,11 @@ import (
 type Handler struct {
 	Router  *mux.Router
 	Service *document.Service
+}
+
+// Response - an object to store repsonses from the API
+type Response struct {
+	Message string
 }
 
 // NewHandler - returns a pointer to a Handler
@@ -35,12 +41,19 @@ func (h *Handler) SetupRoutes() {
 	h.Router.HandleFunc("/api/v1/document/{id}", h.DeleteDocument).Methods("DELETE")
 
 	h.Router.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		glog.Info("health check success - 200 OK")
+		w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(Response{Message: "HTTP Status: 200 OK"}); err != nil {
+			glog.Warning(err)
+		}
 	})
 }
 
 // GetDocument - retrieve a single document by ID
 func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	w.WriteHeader(http.StatusOK)
+
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -54,45 +67,80 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Error Retrieving Document by ID")
 	}
 
-	fmt.Fprintf(w, "%+v", document)
+	if err := json.NewEncoder(w).Encode(document); err != nil {
+		glog.Warning(err)
+	}
 }
 
 // GetAllDocuments - fetch all documents from the document service
 func (h *Handler) GetAllDocuments(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
 	documents, err := h.Service.GetAllDocuments()
 	if err != nil {
 		fmt.Fprintf(w, "Failed to retrieve documents")
 	}
-	fmt.Fprintf(w, "%+v", documents)
+	if err := json.NewEncoder(w).Encode(documents); err != nil {
+		glog.Warning(err)
+	}
 }
 
 // PostDocument - adds a new document
 func (h *Handler) PostDocument(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
-	document, err := h.Service.PostDocument(document.Document{
-		Path: "/",
-	})
+	var document document.Document
+	// Parse the request body as document
+	if err := json.NewDecoder(r.Body).Decode(&document); err != nil {
+		fmt.Fprintf(w, "Failed to decode JSON Body")
+	}
+	// Post to document service
+	document, err := h.Service.PostDocument(document)
 	if err != nil {
 		fmt.Fprintf(w, "Failed to post new document")
 	}
-	fmt.Fprintf(w, "%+v", document)
+	// return the document
+	if err := json.NewEncoder(w).Encode(document); err != nil {
+		glog.Warning(err)
+	}
 }
 
 // UpdateDocument - update an exisiting document by ID
 func (h *Handler) UpdateDocument(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
-	document, err := h.Service.UpdateDocument(1, document.Document{
-		Path: "/new",
-	})
+	var document document.Document
+	// Parse the request body as document
+	if err := json.NewDecoder(r.Body).Decode(&document); err != nil {
+		fmt.Fprintf(w, "Failed to decode JSON Body")
+	}
+
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	commentID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		fmt.Fprintf(w, "Unable to parse UINT from ID")
+	}
+
+	document, err = h.Service.UpdateDocument(uint(commentID), document)
 	if err != nil {
 		fmt.Fprintf(w, "Failed to update document")
 	}
-	fmt.Fprintf(w, "%+v", document)
+
+	// Return the newly update document as json
+	if err := json.NewEncoder(w).Encode(document); err != nil {
+		glog.Warning(err)
+	}
 }
 
 // DeleteDocument - delete a document by ID
 func (h *Handler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	w.WriteHeader(http.StatusOK)
 
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -106,5 +154,8 @@ func (h *Handler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Fprintf(w, "Failed to delete document")
 	}
-	fmt.Fprintf(w, "Successfully deleted document")
+
+	if err := json.NewEncoder(w).Encode(Response{Message: "Successfully deleted document"}); err != nil {
+		glog.Warning(err)
+	}
 }
