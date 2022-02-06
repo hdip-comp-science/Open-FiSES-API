@@ -49,9 +49,15 @@ func (h *Handler) SetupRoutes() {
 	})
 }
 
+// open app to localhost:4000 origin origin. Solves CORS issue with client app
+func enableCors(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
+
 // GetDocument - retrieve a single document by ID
 func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
 
 	vars := mux.Vars(r)
@@ -75,6 +81,7 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 // GetAllDocuments - fetch all documents from the document service
 func (h *Handler) GetAllDocuments(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
 
 	documents, err := h.Service.GetAllDocuments()
@@ -89,6 +96,7 @@ func (h *Handler) GetAllDocuments(w http.ResponseWriter, r *http.Request) {
 // PostDocument - adds a new document
 func (h *Handler) PostDocument(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
 
 	var document document.Document
@@ -110,6 +118,7 @@ func (h *Handler) PostDocument(w http.ResponseWriter, r *http.Request) {
 // UpdateDocument - update an exisiting document by ID
 func (h *Handler) UpdateDocument(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
 
 	var document document.Document
@@ -140,6 +149,7 @@ func (h *Handler) UpdateDocument(w http.ResponseWriter, r *http.Request) {
 // DeleteDocument - delete a document by ID
 func (h *Handler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
 
 	vars := mux.Vars(r)

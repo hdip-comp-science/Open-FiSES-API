@@ -32,10 +32,10 @@ func (app *App) Run() error {
 	handler := transportHTTP.NewHandler(documentService)
 	handler.SetupRoutes()
 
-	if err := http.ListenAndServe(":3000", handler.Router); err != nil {
+	if err := http.ListenAndServe(":4000", handler.Router); err != nil {
 		return fmt.Errorf("failed to setup web server, %v", err)
 	}
-
+	glog.Info("* App Setup Complete")
 	return nil
 }
 
