@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -40,6 +41,8 @@ func (h *Handler) SetupRoutes() {
 	h.Router.HandleFunc("/api/v1/document/{id}", h.GetDocument).Methods("GET")
 	h.Router.HandleFunc("/api/v1/document/{id}", h.DeleteDocument).Methods("DELETE")
 
+	h.Router.HandleFunc("/api/v1/upload", h.UploadFile)
+
 	h.Router.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
 		w.WriteHeader(http.StatusOK)
@@ -49,9 +52,46 @@ func (h *Handler) SetupRoutes() {
 	})
 }
 
-// open app to localhost:4000 origin origin. Solves CORS issue with client app
+// open app to localhost:4000 origin. Solves CORS issue with client app
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
+
+func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
+	glog.Info(w, "Uploading File\n")
+
+	// 1. parse the input, type multipart/for-data
+	r.ParseMultipartForm(10 << 20)
+	// 2. retriev file from posted form data
+	file, handler, err := r.FormFile("tempFile")
+	if err != nil {
+		glog.Errorf("Error Retrieving file from form-data", err)
+		return
+	}
+	defer file.Close()
+	glog.Info("Uploaded File: %+v\n", handler.Filename)
+	glog.Info("File Size: %+v\n", handler.Size)
+	glog.Info("MIME Header: %+v\n", handler.Header)
+
+	// 3. write temporary file on the server
+	// create temporary file in our project directory
+	tempFile, err := ioutil.TempFile("temp-file", "upload-*.pdf")
+	if err != nil {
+		glog.Errorf("Error creating temp file", err)
+		return
+	}
+
+	defer tempFile.Close()
+
+	fileBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		glog.Warningf("Warning: no file to read", err)
+		return
+	}
+	tempFile.Write(fileBytes)
+	// 4. return wether or not this has been succesful
+	fmt.Fprintf(w, "Successfully Uploaded File\n")
+
 }
 
 // GetDocument - retrieve a single document by ID
