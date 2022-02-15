@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/Open-FiSE/go-rest-api/internal/document"
@@ -41,7 +42,7 @@ func (h *Handler) SetupRoutes() {
 	h.Router.HandleFunc("/api/v1/document/{id}", h.GetDocument).Methods("GET")
 	h.Router.HandleFunc("/api/v1/document/{id}", h.DeleteDocument).Methods("DELETE")
 
-	h.Router.HandleFunc("/api/v1/upload", h.UploadFile)
+	h.Router.HandleFunc("/api/v1/upload", h.Upload)
 
 	h.Router.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
@@ -50,6 +51,7 @@ func (h *Handler) SetupRoutes() {
 			glog.Warning(err)
 		}
 	})
+	glog.Info("App Setup Complete...")
 }
 
 // open app to localhost:4000 origin. Solves CORS issue with client app
@@ -57,41 +59,88 @@ func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
 }
 
-func (h *Handler) UploadFile(w http.ResponseWriter, r *http.Request) {
-	glog.Info(w, "Uploading File\n")
+// PostDocument - adds a new document
+func (h *Handler) PostDocument(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	enableCors(&w)
+	w.WriteHeader(http.StatusOK)
 
-	// 1. parse the input, type multipart/for-data
-	r.ParseMultipartForm(10 << 20)
-	// 2. retriev file from posted form data
-	file, handler, err := r.FormFile("tempFile")
+	var document document.Document
+	// Parse the request body as document
+	if err := json.NewDecoder(r.Body).Decode(&document); err != nil {
+		fmt.Fprintf(w, "Failed to decode JSON Body")
+	}
+	// Post to document service
+	document, err := h.Service.PostDocument(document)
 	if err != nil {
-		glog.Errorf("Error Retrieving file from form-data", err)
+		fmt.Fprintf(w, "Failed to post new document")
+	}
+	// return the document
+	if err := json.NewEncoder(w).Encode(document); err != nil {
+		glog.Warning(err)
+	}
+}
+
+// PostDocument - adds a new document
+func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.WriteHeader(http.StatusOK)
+
+	// 1. parse input , type multipart/form-data
+	r.ParseMultipartForm(3 << 30) // set constraints on file upload size
+
+	// 2. retrieve data from file posted form-date
+	file, fileHeader, err := r.FormFile("file")
+	if err != nil {
+		glog.Warning(err)
+		http.Error(w, "Error Retrieving file from form-data", http.StatusInternalServerError)
 		return
 	}
+
 	defer file.Close()
-	glog.Info("Uploaded File: %+v\n", handler.Filename)
-	glog.Info("File Size: %+v\n", handler.Size)
-	glog.Info("MIME Header: %+v\n", handler.Header)
+	// print headers to console
+	glog.Infof("Uploading File: %+v\n", fileHeader.Filename)
+	glog.Infof("File Size: %+v\n", fileHeader.Size)
+	glog.Infof("MIME Header: %+v\n", fileHeader.Header)
 
-	// 3. write temporary file on the server
-	// create temporary file in our project directory
-	tempFile, err := ioutil.TempFile("temp-file", "upload-*.pdf")
-	if err != nil {
-		glog.Errorf("Error creating temp file", err)
-		return
-	}
-
-	defer tempFile.Close()
-
+	// func ReadAll(r io.Reader) ([]byte, error)
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
-		glog.Warningf("Warning: no file to read", err)
+		glog.Error(err)
+	}
+
+	// Create the uploads folder if it doesn't already exist
+	path := "/app/docs/"
+	err = os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tempFile.Write(fileBytes)
-	// 4. return wether or not this has been succesful
-	fmt.Fprintf(w, "Successfully Uploaded File\n")
+	var document document.Document
 
+	document.Path = path
+	document.Title = fileHeader.Filename
+	document.Version = "1.0"
+
+	// Post to document service
+	document, err = h.Service.PostDocument(document)
+	if err != nil {
+		fmt.Fprintf(w, "Failed to post new document")
+	}
+
+	// write data to named file. If file does not exist WriteFile creates it.
+	err = os.WriteFile(path+fileHeader.Filename, fileBytes, 0644)
+	if err != nil {
+		glog.Error(err)
+	}
+
+	// 4. return whether or not this has been successful
+	glog.Infof("%s: Successfully uploaded file\n")
+
+	// after file upload is done redirect to new page.
+	// display pdf in iframe or similar
+	// modify upload post show pdf in the front-end
+	// what pkg will view pdf on front end.
 }
 
 // GetDocument - retrieve a single document by ID
@@ -129,28 +178,6 @@ func (h *Handler) GetAllDocuments(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Failed to retrieve documents")
 	}
 	if err := json.NewEncoder(w).Encode(documents); err != nil {
-		glog.Warning(err)
-	}
-}
-
-// PostDocument - adds a new document
-func (h *Handler) PostDocument(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
-	enableCors(&w)
-	w.WriteHeader(http.StatusOK)
-
-	var document document.Document
-	// Parse the request body as document
-	if err := json.NewDecoder(r.Body).Decode(&document); err != nil {
-		fmt.Fprintf(w, "Failed to decode JSON Body")
-	}
-	// Post to document service
-	document, err := h.Service.PostDocument(document)
-	if err != nil {
-		fmt.Fprintf(w, "Failed to post new document")
-	}
-	// return the document
-	if err := json.NewEncoder(w).Encode(document); err != nil {
 		glog.Warning(err)
 	}
 }

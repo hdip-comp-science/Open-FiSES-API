@@ -12,9 +12,10 @@ type Service struct {
 // Document - Defines the Document Model Structure
 type Document struct {
 	gorm.Model
-	Path   string
-	Body   string
-	Author string
+	Path    string
+	Title   string
+	Version string
+	Author  string
 }
 
 // DocumentService - Defines the contract in against which you have to
@@ -28,7 +29,7 @@ type DocumentService interface {
 	GetAllDocuments() ([]Document, error)
 }
 
-// NewService - returns a new document service
+// NewService - returns a pointer to a new document service
 func NewService(db *gorm.DB) *Service {
 	return &Service{
 		DB: db,
@@ -46,13 +47,13 @@ func (s *Service) GetDocument(ID uint) (Document, error) {
 }
 
 // GetDocumentByPath - retrieves all documents by path (path - /sop/name/ )
-func (s *Service) GetDocumentByPath(path string) ([]Document, error) {
-	var documents []Document
-	if result := s.DB.First(&documents).Where("path=?", path); result.Error != nil {
-		return []Document{}, result.Error
-	}
-	return documents, nil
-}
+// func (s *Service) GetDocumentByPath(path string) ([]Document, error) {
+// 	var documents []Document
+// 	if result := s.DB.First(&documents).Where("path=?", path); result.Error != nil {
+// 		return []Document{}, result.Error
+// 	}
+// 	return documents, nil
+// }
 
 // PostDocument - adds a new document to the database
 func (s *Service) PostDocument(document Document) (Document, error) {

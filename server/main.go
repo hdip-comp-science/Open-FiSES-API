@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/Open-FiSE/go-rest-api/internal/database"
 	"github.com/Open-FiSE/go-rest-api/internal/document"
@@ -16,6 +17,12 @@ type App struct{}
 // Run - sets up the application
 func (app *App) Run() error {
 	glog.Info("Setting up App")
+
+	os.Setenv("DB_USERNAME", "postgres")
+	os.Setenv("DB_PASSWORD", "postgres")
+	os.Setenv("DB_HOST", "localhost")
+	os.Setenv("DB_TABLE", "postgres")
+	os.Setenv("DB_PORT", "5432")
 
 	db, err := database.NewDatabase()
 	if err != nil {
@@ -35,7 +42,7 @@ func (app *App) Run() error {
 	if err := http.ListenAndServe(":4000", handler.Router); err != nil {
 		return fmt.Errorf("failed to setup web server, %v", err)
 	}
-	glog.Info("* App Setup Complete")
+
 	return nil
 }
 
