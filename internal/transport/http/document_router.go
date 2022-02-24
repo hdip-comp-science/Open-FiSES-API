@@ -10,8 +10,8 @@ import (
 	"strconv"
 
 	"github.com/Open-FiSE/go-rest-api/internal/document"
-	"github.com/golang/glog"
 	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 )
 
 // Handler - stores pointer to our document service
@@ -34,7 +34,7 @@ func NewHandler(service *document.Service) *Handler {
 
 // SetupRoutes - sets up all routes for the application
 func (h *Handler) SetupRoutes() {
-	glog.Info("Setting Up Routes")
+	log.Info("Setting Up Routes")
 	h.Router = mux.NewRouter()
 
 	h.Router.HandleFunc("/api/v1/document", h.GetAllDocuments).Methods("GET")
@@ -49,10 +49,10 @@ func (h *Handler) SetupRoutes() {
 		w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(Response{Message: "HTTP Status: 200 OK"}); err != nil {
-			glog.Warning(err)
+			log.Warning(err)
 		}
 	})
-	glog.Info("App Setup Complete...")
+	log.Info("App Setup Complete...")
 }
 
 // open app to localhost:4000 origin. Solves CORS issue with client app
@@ -71,21 +71,21 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	// 2. retrieve data from file posted form-date
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
-		glog.Warning(err)
+		log.Warning(err)
 		http.Error(w, "Error Retrieving file from form-data", http.StatusInternalServerError)
 		return
 	}
 
 	defer file.Close()
 	// print headers to console
-	glog.Infof("Uploading File: %+v\n", fileHeader.Filename)
-	glog.Infof("File Size: %+v\n", fileHeader.Size)
-	glog.Infof("MIME Header: %+v\n", fileHeader.Header)
+	log.Infof("Uploading File: %+v\n", fileHeader.Filename)
+	log.Infof("File Size: %+v\n", fileHeader.Size)
+	log.Infof("MIME Header: %+v\n", fileHeader.Header)
 
 	// func ReadAll(r io.Reader) ([]byte, error)
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
-		glog.Error(err)
+		log.Error(err)
 	}
 
 	// Create the uploads folder if it doesn't already exist
@@ -112,11 +112,11 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	// write data to named file. If file does not exist WriteFile creates it.
 	err = os.WriteFile(path+fileHeader.Filename, fileBytes, 0644)
 	if err != nil {
-		glog.Error(err)
+		log.Error(err)
 	}
 
 	// 4. return whether or not this has been successful
-	glog.Infof("Successfully uploaded file: %s\n", document.Title)
+	log.Infof("Successfully uploaded file: %s\n", document.Title)
 
 }
 
@@ -141,7 +141,7 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	filename := document.Path
 	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Println(err)
+		log.Error(err)
 		w.WriteHeader(500)
 		return
 	}
@@ -178,7 +178,7 @@ func (h *Handler) GetAllDocuments(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Failed to retrieve documents")
 	}
 	if err := json.NewEncoder(w).Encode(documents); err != nil {
-		glog.Warning(err)
+		log.Warning(err)
 	}
 }
 
@@ -209,7 +209,7 @@ func (h *Handler) UpdateDocument(w http.ResponseWriter, r *http.Request) {
 
 	// Return the newly update document as json
 	if err := json.NewEncoder(w).Encode(document); err != nil {
-		glog.Warning(err)
+		log.Warning(err)
 	}
 }
 
@@ -233,7 +233,7 @@ func (h *Handler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(Response{Message: "Successfully deleted document"}); err != nil {
-		glog.Warning(err)
+		log.Warning(err)
 	}
 }
 
@@ -255,6 +255,6 @@ func (h *Handler) PostDocument(w http.ResponseWriter, r *http.Request) {
 	}
 	// return the document
 	if err := json.NewEncoder(w).Encode(document); err != nil {
-		glog.Warning(err)
+		log.Warning(err)
 	}
 }

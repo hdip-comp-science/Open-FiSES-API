@@ -3,8 +3,8 @@ package document
 import (
 	"os"
 
-	"github.com/golang/glog"
 	"github.com/jinzhu/gorm"
+	log "github.com/sirupsen/logrus"
 )
 
 //  Service - the struct for the document service
@@ -50,7 +50,8 @@ func (s *Service) GetDocument(ID uint) (Document, error) {
 	// read the filename and return the contents (bytes).
 	body, err := os.ReadFile(document.Path)
 	if err != nil {
-		glog.Errorf("unable to read file: %v", err)
+		log.Error("unable to read file")
+		log.Error(err)
 	}
 	document.Body = string(body)
 

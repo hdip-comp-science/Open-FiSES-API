@@ -1,22 +1,29 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/Open-FiSE/go-rest-api/internal/database"
 	"github.com/Open-FiSE/go-rest-api/internal/document"
 	transportHTTP "github.com/Open-FiSE/go-rest-api/internal/transport/http"
-	"github.com/golang/glog"
+	log "github.com/sirupsen/logrus"
 )
 
-type App struct{}
+type App struct {
+	Name    string
+	Version string
+}
 
 // Run - sets up the application
 func (app *App) Run() error {
-	glog.Info("Setting up App")
+	// change the o/p of log to json format
+	log.SetFormatter(&log.JSONFormatter{})
+	log.WithFields(
+		log.Fields{
+			"AppName":    app.Name,
+			"AppVersion": app.Version,
+		}).Info("Setting up Application")
 
 	os.Setenv("DB_USERNAME", "postgres")
 	os.Setenv("DB_PASSWORD", "postgres")
@@ -26,12 +33,12 @@ func (app *App) Run() error {
 
 	db, err := database.NewDatabase()
 	if err != nil {
-		glog.Error("Error: Failed to setup database connection")
+		log.Error("Error: Failed to setup database connection")
 	}
 	//
 	err = database.MigrateDB(db)
 	if err != nil {
-		glog.Error("Error: Failed to migrate database")
+		log.Error("Error: Failed to migrate database")
 	}
 
 	documentService := document.NewService(db)
@@ -40,7 +47,7 @@ func (app *App) Run() error {
 	handler.SetupRoutes()
 
 	if err := http.ListenAndServe(":4000", handler.Router); err != nil {
-		return fmt.Errorf("failed to setup web server, %v", err)
+		log.Error("failed to setup web server")
 	}
 
 	return nil
@@ -48,20 +55,22 @@ func (app *App) Run() error {
 
 func main() {
 
-	// This is needed to make `glog` believe that the flags have already been parsed, otherwise
-	// every log messages is prefixed by an error message stating the the flags haven't been parsed.
-	_ = flag.CommandLine.Parse([]string{})
+	// // This is needed to make `glog` believe that the flags have already been parsed, otherwise
+	// // every log messages is prefixed by an error message stating the the flags haven't been parsed.
+	// _ = flag.CommandLine.Parse([]string{})
 
-	// Always log to stderr by default
-	if err := flag.Set("logtostderr", "true"); err != nil {
-		glog.Infof("Unable to set logtostderr to true")
+	// // Always log to stderr by default
+	// if err := flag.Set("logtostderr", "true"); err != nil {
+	// 	glog.Infof("Unable to set logtostderr to true")
+	// }
+	// instantiate the application
+	app := App{
+		Name:    "FiSES API Service",
+		Version: "1.0.0",
 	}
-
-	glog.Info("Welcome to the beginning of this project")
-
-	app := App{}
 	if err := app.Run(); err != nil {
-		glog.Warningf("Failed to start App, %v", err)
+		log.Error("Failed to start App")
+		log.Fatal(err)
 	}
 
 }

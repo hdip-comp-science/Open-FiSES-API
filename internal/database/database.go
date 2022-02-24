@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/golang/glog"
+	log "github.com/sirupsen/logrus"
 
 	// wrapper around DB driver to open up communications to the database
 	"github.com/jinzhu/gorm"
@@ -16,7 +16,7 @@ import (
 
 // NewDatabase - returns a pointer to a database object
 func NewDatabase() (*gorm.DB, error) {
-	glog.Info("Setting up database connection")
+	log.Info("Setting up database connection")
 
 	dbUsername := os.Getenv("DB_USERNAME")
 	dbPassword := os.Getenv("DB_PASSWORD")
