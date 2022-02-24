@@ -26,8 +26,16 @@ Next, run the application: `go run server/main.go`. It will run through the conn
 
 This is not an entire list of package imports but one's I thought are worth mentioning.
 
-- **GLOG** <br>
-  The `glog` package implements a pure Go implementation of levelled logs. It provides the functions Info, Warning, Error, Fatal, plus formatting variants such as Infof, Warningf etc. Checkout glog repository[1] for more details.<br>
+- **Logrus** <br>
+  `Logrus` is a structured logger for Go (golang), completely API compatible with the standard library logger. Logrus has the following characteristics:
+  
+
+    - Fully compatible with the log module of the golang standard library: logrus has six log levels: debug, info, warn, error, fatal and panic, which is a superset of the API of the log module of the golang standard library. If your project uses the standard library log module, it can be migrated to logrus at the lowest cost.
+    - Extensible hook mechanism: allows users to distribute logs to any place through hook, such as local file system, standard output, logstash, elastic search or MQ, or define log content and format through hook.
+    - Optional log output formats: logrus has two built-in log formats, jsonformatter and textformatter. If these two formats do not meet the requirements, you can implement the interface formatter by yourself to define your own log format.
+    - Field mechanism: logrus encourages detailed and structured logging through the field mechanism, rather than logging through lengthy messages.
+    - Logrus is a pluggable and structured log framework.
+    <br>
 
 - **Gorrila Mux** <br>
   The gorrilla/mux package [2] implements a request router and dispatcher for matching incoming requests to their respective handler. The name mux stands for “HTTP request multiplexer”. It is also compliant to Go’s default request handler signature `func (w http.ResponseWriter, r *http.Request)`, so the package can be mixed and machted with other HTTP libraries like middleware or exisiting applications. Use the go get command to install the package from GitHub like so: 
@@ -48,7 +56,7 @@ This is not an entire list of package imports but one's I thought are worth ment
 
 ## References
 
-[1] [glog repository](https://github.com/golang/glog)
+[1] [logrus documentation](https://pkg.go.dev/github.com/sirupsen/logrus#section-documentation)
 [2] [gorrilla/mux](https://github.com/gorilla/mux)
 [3] [GORM`](https://github.com/go-gorm/gorm)
 [4] [Golang ORM Tutorial](https://tutorialedge.net/golang/golang-orm-tutorial/)
