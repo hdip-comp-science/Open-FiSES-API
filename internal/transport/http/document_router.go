@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -60,28 +61,6 @@ func enableCors(w *http.ResponseWriter) {
 }
 
 // PostDocument - adds a new document
-func (h *Handler) PostDocument(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
-	enableCors(&w)
-	w.WriteHeader(http.StatusOK)
-
-	var document document.Document
-	// Parse the request body as document
-	if err := json.NewDecoder(r.Body).Decode(&document); err != nil {
-		fmt.Fprintf(w, "Failed to decode JSON Body")
-	}
-	// Post to document service
-	document, err := h.Service.PostDocument(document)
-	if err != nil {
-		fmt.Fprintf(w, "Failed to post new document")
-	}
-	// return the document
-	if err := json.NewEncoder(w).Encode(document); err != nil {
-		glog.Warning(err)
-	}
-}
-
-// PostDocument - adds a new document
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
@@ -118,9 +97,11 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	var document document.Document
 
-	document.Path = path
+	// assign document values to document struct fileds
+	document.Path = path + fileHeader.Filename
 	document.Title = fileHeader.Filename
 	document.Version = "1.0"
+	document.Author = "" //TBD when auth is implemented
 
 	// Post to document service
 	document, err = h.Service.PostDocument(document)
@@ -135,17 +116,12 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 4. return whether or not this has been successful
-	glog.Infof("%s: Successfully uploaded file\n")
+	glog.Infof("Successfully uploaded file: %s\n", document.Title)
 
-	// after file upload is done redirect to new page.
-	// display pdf in iframe or similar
-	// modify upload post show pdf in the front-end
-	// what pkg will view pdf on front end.
 }
 
 // GetDocument - retrieve a single document by ID
 func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
 	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
 
@@ -162,9 +138,33 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Error Retrieving Document by ID")
 	}
 
-	if err := json.NewEncoder(w).Encode(document); err != nil {
-		glog.Warning(err)
+	filename := document.Path
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(500)
+		return
 	}
+	defer file.Close()
+
+	//get file info for content-length header
+	info, err := os.Stat(filename)
+	if err != nil {
+		http.Error(w, "File stat error: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	//Set headers
+	w.Header().Set("Content-type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", "attachment; filename="+strconv.Quote(filename))
+	w.Header().Set("Content-Length", strconv.FormatInt(info.Size(), 10))
+
+	//Stream to response
+	if _, err := io.Copy(w, file); err != nil {
+		fmt.Println(err)
+		w.WriteHeader(500)
+	}
+	// return
 }
 
 // GetAllDocuments - fetch all documents from the document service
@@ -233,6 +233,28 @@ func (h *Handler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(Response{Message: "Successfully deleted document"}); err != nil {
+		glog.Warning(err)
+	}
+}
+
+// PostDocument - adds a new document
+func (h *Handler) PostDocument(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
+	enableCors(&w)
+	w.WriteHeader(http.StatusOK)
+
+	var document document.Document
+	// Parse the request body as document
+	if err := json.NewDecoder(r.Body).Decode(&document); err != nil {
+		fmt.Fprintf(w, "Failed to decode JSON Body")
+	}
+	// Post to document service
+	document, err := h.Service.PostDocument(document)
+	if err != nil {
+		fmt.Fprintf(w, "Failed to post new document")
+	}
+	// return the document
+	if err := json.NewEncoder(w).Encode(document); err != nil {
 		glog.Warning(err)
 	}
 }

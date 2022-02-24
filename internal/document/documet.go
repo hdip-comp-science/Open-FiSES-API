@@ -1,6 +1,9 @@
 package document
 
 import (
+	"os"
+
+	"github.com/golang/glog"
 	"github.com/jinzhu/gorm"
 )
 
@@ -12,10 +15,11 @@ type Service struct {
 // Document - Defines the Document Model Structure
 type Document struct {
 	gorm.Model
-	Path    string
-	Title   string
-	Version string
-	Author  string
+	Path    string `json:"path"`
+	Title   string `json:"title"`
+	Version string `json:"version"`
+	Author  string `json:"author"`
+	Body    string `json:"body"`
 }
 
 // DocumentService - Defines the contract in against which you have to
@@ -43,6 +47,13 @@ func (s *Service) GetDocument(ID uint) (Document, error) {
 	if result := s.DB.First(&document, ID); result.Error != nil {
 		return Document{}, result.Error
 	}
+	// read the filename and return the contents (bytes).
+	body, err := os.ReadFile(document.Path)
+	if err != nil {
+		glog.Errorf("unable to read file: %v", err)
+	}
+	document.Body = string(body)
+
 	return document, nil
 }
 
