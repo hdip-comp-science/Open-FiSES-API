@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,13 +17,77 @@ import (
 
 // open app to localhost:4000 origin. Solves CORS issue with client app
 func enableCors(w *http.ResponseWriter) {
-	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	(*w).Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH,OPTIONS")
+}
+
+// func getHash(filename string) (uint32, error) {
+// 	// open the file
+// 	f, err := os.Open(filename)
+// 	if err != nil {
+// 		return 0, err
+// 	}
+// 	// remember to always close opened files
+// 	defer f.Close()
+
+// 	// create a hasher
+
+// 	h := crc32.NewIEEE()
+// 	// copy the file into the hasher
+// 	// - copy takes (dst, src) and returns (bytesWritten, error)
+// 	_, err = io.Copy(h, f)
+// 	// we don't care about how many bytes were written, but we do want to
+// 	// handle the error
+// 	if err != nil {
+// 		return 0, err
+// 	}
+// 	return h.Sum32(), nil
+// }
+
+const chunkSize = 64000
+
+func deepCompare(file1, file2 string) bool {
+	// Check file size ...
+
+	f1, err := os.Open(file1)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f1.Close()
+
+	f2, err := os.Open(file2)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f2.Close()
+
+	for {
+		b1 := make([]byte, chunkSize)
+		_, err1 := f1.Read(b1)
+
+		b2 := make([]byte, chunkSize)
+		_, err2 := f2.Read(b2)
+
+		if err1 != nil || err2 != nil {
+			if err1 == io.EOF && err2 == io.EOF {
+				return true
+			} else if err1 == io.EOF || err2 == io.EOF {
+				return false
+			} else {
+				log.Fatal(err1, err2)
+			}
+		}
+
+		if !bytes.Equal(b1, b2) {
+			return false
+		}
+	}
 }
 
 // PostDocument - adds a new document
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
+	path := "/app/docs/"
 	enableCors(&w)
-	w.WriteHeader(http.StatusOK)
 
 	// 1. parse input , type multipart/form-data
 	r.ParseMultipartForm(3 << 30) // set constraints on file upload size
@@ -36,6 +101,18 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer file.Close()
+
+	// implement file check here...
+
+	deepCompare(path+fileHeader.Filename, path+"cheat_sheet_bash.pdf")
+
+	// Stat returns a FileInfo describing the named file.
+	// if _, err := os.Stat(document.Path); err == nil {
+	// 	log.Errorf("%s file already exists \n", document.Path)
+	// } else {
+	// 	log.Infof("%s is a new file \n", document.Path)
+	// }
+
 	// print headers to console
 	log.Infof("Uploading File: %+v\n", fileHeader.Filename)
 	log.Infof("File Size: %+v\n", fileHeader.Size)
@@ -48,7 +125,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the uploads folder if it doesn't already exist
-	path := "/app/docs/"
+
 	err = os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -76,6 +153,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	// 4. return whether or not this has been successful
 	log.Infof("Successfully uploaded file: %s\n", document.Title)
+	w.WriteHeader(http.StatusOK)
 
 }
 
@@ -156,12 +234,12 @@ func (h *Handler) UpdateDocument(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	commentID, err := strconv.ParseUint(id, 10, 64)
+	documentID, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {
 		fmt.Fprintf(w, "Unable to parse UINT from ID")
 	}
 
-	document, err = h.Service.UpdateDocument(uint(commentID), document)
+	document, err = h.Service.UpdateDocument(uint(documentID), document)
 	if err != nil {
 		fmt.Fprintf(w, "Failed to update document")
 	}
@@ -181,12 +259,12 @@ func (h *Handler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	commentID, err := strconv.ParseUint(id, 10, 64)
+	documentID, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {
 		fmt.Fprintf(w, "Unable to parse UINT from ID")
 	}
 
-	err = h.Service.DeleteDocument(uint(commentID))
+	err = h.Service.DeleteDocument(uint(documentID))
 	if err != nil {
 		fmt.Fprintf(w, "Failed to delete document")
 	}

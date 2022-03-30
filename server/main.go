@@ -10,12 +10,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// App - defines the application properties.
 type App struct {
 	Name    string
 	Version string
 }
 
-// Run - sets up the application
+const port string = ":4000"
+
+// Run - sets up and starts the application
 func (app *App) Run() error {
 	// change the o/p of log to json format
 	log.SetFormatter(&log.JSONFormatter{})
@@ -29,8 +32,9 @@ func (app *App) Run() error {
 	os.Setenv("DB_PASSWORD", "postgres")
 	os.Setenv("DB_HOST", "localhost")
 	os.Setenv("DB_TABLE", "postgres")
-	os.Setenv("DB_PORT", "5432")
+	os.Setenv("DB_PORT", "5433")
 
+	// connection to the DB will be used concurrently across all incoming API-calls
 	db, err := database.NewDatabase()
 	if err != nil {
 		log.Error("Error: Failed to setup database connection")
@@ -46,7 +50,7 @@ func (app *App) Run() error {
 	handler := transportHTTP.NewHandler(documentService)
 	handler.SetupRoutes()
 
-	if err := http.ListenAndServe(":4000", handler.Router); err != nil {
+	if err := http.ListenAndServe(port, handler.Router); err != nil {
 		log.Error("failed to setup web server")
 	}
 
@@ -54,15 +58,6 @@ func (app *App) Run() error {
 }
 
 func main() {
-
-	// // This is needed to make `glog` believe that the flags have already been parsed, otherwise
-	// // every log messages is prefixed by an error message stating the the flags haven't been parsed.
-	// _ = flag.CommandLine.Parse([]string{})
-
-	// // Always log to stderr by default
-	// if err := flag.Set("logtostderr", "true"); err != nil {
-	// 	glog.Infof("Unable to set logtostderr to true")
-	// }
 	// instantiate the application
 	app := App{
 		Name:    "FiSES API Service",

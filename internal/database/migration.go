@@ -5,7 +5,7 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-// MigrateDB - migrates the database and creates the document table
+// MigrateDB - will create and migrate the tables, and then creates relationships if necessary
 func MigrateDB(db *gorm.DB) error {
 	// AutoMigrate - takes in document model (struct) &
 	// define DB columns Path | Body | Author as well as predefined gorm (ID, update time etc).

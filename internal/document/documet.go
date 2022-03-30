@@ -28,12 +28,12 @@ type DocumentService interface {
 	GetDocument(ID uint) (Document, error)
 	GetDocumentByPath(path string) ([]Document, error)
 	PostDocument(document Document) (Document, error)
-	UpdateDocument(ID uint, newDocument Document) (Comment error)
+	UpdateDocument(ID uint, newDocument Document) (Document error)
 	DeleteDocument(ID uint) error
 	GetAllDocuments() ([]Document, error)
 }
 
-// NewService - returns a pointer to a new document service
+// NewService - takes in a pointer to the DB & returns a pointer to a new document service
 func NewService(db *gorm.DB) *Service {
 	return &Service{
 		DB: db,
@@ -68,21 +68,36 @@ func (s *Service) GetDocument(ID uint) (Document, error) {
 // }
 
 // PostDocument - adds a new document to the database
+
+// func (s *Service) PostDocument(document Document) (Document, error) {
+// 	if result := s.DB.Save(&document); result.Error != nil {
+// 		return Document{}, result.Error
+// 	}
+// 	return document, nil
+// }
+
 func (s *Service) PostDocument(document Document) (Document, error) {
-	if result := s.DB.Save(&document); result.Error != nil {
-		return Document{}, result.Error
+
+	// Stat returns a FileInfo describing the named file.
+	if _, err := os.Stat(document.Path); err == nil {
+		log.Infof("%s file exists \n", document.Path)
+	} else {
+		if result := s.DB.Save(&document); result.Error != nil {
+			return Document{}, result.Error
+		}
 	}
+
 	return document, nil
 }
 
 // UpdateDocument - updates a document by ID with new document info
-func (s *Service) UpdateDocument(ID uint, newComment Document) (Document, error) {
+func (s *Service) UpdateDocument(ID uint, newDocument Document) (Document, error) {
 	document, err := s.GetDocument(ID)
 	if err != nil {
 		return Document{}, err
 	}
 
-	if result := s.DB.Model(&document).Updates(newComment); result.Error != nil {
+	if result := s.DB.Model(&document).Updates(newDocument); result.Error != nil {
 		return Document{}, result.Error
 	}
 

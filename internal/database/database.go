@@ -14,7 +14,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
-// NewDatabase - returns a pointer to a database object
+// NewDatabase - returns a pointer to the postgres database object
 func NewDatabase() (*gorm.DB, error) {
 	log.Info("Setting up database connection")
 
@@ -29,11 +29,12 @@ func NewDatabase() (*gorm.DB, error) {
 	// open up DB connection
 	db, err := gorm.Open("postgres", connectionString)
 	if err != nil {
-		return db, err
+		return db, fmt.Errorf("unable to connect to database: %v", err)
 	}
 	// Ping the DB using the credentials obtained via env variables.
 	if err := db.DB().Ping(); err != nil {
 		return db, err
 	}
+	log.Info("Database connection established")
 	return db, nil
 }
