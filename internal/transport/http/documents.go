@@ -1,7 +1,8 @@
 package http
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,79 +22,16 @@ func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH,OPTIONS")
 }
 
-// func getHash(filename string) (uint32, error) {
-// 	// open the file
-// 	f, err := os.Open(filename)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	// remember to always close opened files
-// 	defer f.Close()
-
-// 	// create a hasher
-
-// 	h := crc32.NewIEEE()
-// 	// copy the file into the hasher
-// 	// - copy takes (dst, src) and returns (bytesWritten, error)
-// 	_, err = io.Copy(h, f)
-// 	// we don't care about how many bytes were written, but we do want to
-// 	// handle the error
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	return h.Sum32(), nil
-// }
-
-const chunkSize = 64000
-
-func deepCompare(file1, file2 string) bool {
-	// Check file size ...
-
-	f1, err := os.Open(file1)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f1.Close()
-
-	f2, err := os.Open(file2)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f2.Close()
-
-	for {
-		b1 := make([]byte, chunkSize)
-		_, err1 := f1.Read(b1)
-
-		b2 := make([]byte, chunkSize)
-		_, err2 := f2.Read(b2)
-
-		if err1 != nil || err2 != nil {
-			if err1 == io.EOF && err2 == io.EOF {
-				return true
-			} else if err1 == io.EOF || err2 == io.EOF {
-				return false
-			} else {
-				log.Fatal(err1, err2)
-			}
-		}
-
-		if !bytes.Equal(b1, b2) {
-			return false
-		}
-	}
-}
-
 // PostDocument - adds a new document
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
-	path := "/app/docs/"
 	enableCors(&w)
 
 	// 1. parse input , type multipart/form-data
-	r.ParseMultipartForm(3 << 30) // set constraints on file upload size
+	r.ParseMultipartForm(3 << 30) // Maximum upload of 3 MB files
 
 	// 2. retrieve data from file posted form-date
-	file, fileHeader, err := r.FormFile("file")
+	//    get fileHeader for filename, size and headers
+	file, fileHeader, err := r.FormFile("file") // where is the
 	if err != nil {
 		log.Warning(err)
 		http.Error(w, "Error Retrieving file from form-data", http.StatusInternalServerError)
@@ -101,31 +39,32 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer file.Close()
+	// generate sha256 hash value of file in memory.
+	// source: https://yourbasic.org/golang/hash-md5-sha256-string-file/
+	// create a new hash.Hash form crypto pkg "crypto/sha256"
+	hash := sha256.New()
+	// implments the io.Writer function, copy from src "hash" to dst "file"
+	if _, err := io.Copy(hash, file); err != nil {
+		log.Fatal(err)
+	}
+	// extract the checksum by calling its Sum function
+	sum := hash.Sum(nil)
+	// convert from hex to string using "encoding/hex" pkg
+	log.Infof("%s", hex.EncodeToString(sum[:]))
 
-	// implement file check here...
-
-	deepCompare(path+fileHeader.Filename, path+"cheat_sheet_bash.pdf")
-
-	// Stat returns a FileInfo describing the named file.
-	// if _, err := os.Stat(document.Path); err == nil {
-	// 	log.Errorf("%s file already exists \n", document.Path)
-	// } else {
-	// 	log.Infof("%s is a new file \n", document.Path)
-	// }
-
-	// print headers to console
+	// print file data to console
 	log.Infof("Uploading File: %+v\n", fileHeader.Filename)
 	log.Infof("File Size: %+v\n", fileHeader.Size)
 	log.Infof("MIME Header: %+v\n", fileHeader.Header)
 
 	// func ReadAll(r io.Reader) ([]byte, error)
+	// ReadAll is defined to read from src until EOF and returns the data it read
 	fileBytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		log.Error(err)
 	}
-
+	path := "/app/docs/"
 	// Create the uploads folder if it doesn't already exist
-
 	err = os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -137,14 +76,16 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	document.Path = path + fileHeader.Filename
 	document.Title = fileHeader.Filename
 	document.Version = "1.0"
-	document.Author = "" //TBD when auth is implemented
+	document.Author = ""                       //TBD when auth is implemented
+	document.Hash = hex.EncodeToString(sum[:]) // `:` is needed because byte arrays cannot be directly turned to a string while slices can
 
 	// Post to document service
 	document, err = h.Service.PostDocument(document)
 	if err != nil {
 		fmt.Fprintf(w, "Failed to post new document")
 	}
-
+	// upload to final destination path
+	//  print sha here
 	// write data to named file. If file does not exist WriteFile creates it.
 	err = os.WriteFile(path+fileHeader.Filename, fileBytes, 0644)
 	if err != nil {

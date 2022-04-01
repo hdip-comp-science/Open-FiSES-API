@@ -20,8 +20,11 @@ type Document struct {
 	Version string `json:"version"`
 	Author  string `json:"author"`
 	Body    string `json:"body"`
+	Hash    string `json:"hash"`
 }
 
+// https://www.baeldung.com/linux/sha-256-from-command-line
+// Hash    hash.Hash `json:"hash"`
 // DocumentService - Defines the contract in against which you have to
 // implement the document service
 type DocumentService interface {
@@ -69,26 +72,26 @@ func (s *Service) GetDocument(ID uint) (Document, error) {
 
 // PostDocument - adds a new document to the database
 
-// func (s *Service) PostDocument(document Document) (Document, error) {
-// 	if result := s.DB.Save(&document); result.Error != nil {
-// 		return Document{}, result.Error
-// 	}
-// 	return document, nil
-// }
-
 func (s *Service) PostDocument(document Document) (Document, error) {
-
-	// Stat returns a FileInfo describing the named file.
-	if _, err := os.Stat(document.Path); err == nil {
-		log.Infof("%s file exists \n", document.Path)
-	} else {
-		if result := s.DB.Save(&document); result.Error != nil {
-			return Document{}, result.Error
-		}
+	if result := s.DB.Save(&document); result.Error != nil {
+		return Document{}, result.Error
 	}
-
 	return document, nil
 }
+
+// func (s *Service) PostDocument(document Document) (Document, error) {
+
+// 	// Stat returns a FileInfo describing the named file.
+// 	if _, err := os.Stat(document.Path); err == nil {
+// 		log.Infof("%s file exists \n", document.Path)
+// 	} else {
+// 		if result := s.DB.Save(&document); result.Error != nil {
+// 			return Document{}, result.Error
+// 		}
+// 	}
+
+// 	return document, nil
+// }
 
 // UpdateDocument - updates a document by ID with new document info
 func (s *Service) UpdateDocument(ID uint, newDocument Document) (Document, error) {
