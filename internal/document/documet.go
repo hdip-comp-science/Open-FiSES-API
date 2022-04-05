@@ -15,12 +15,12 @@ type Service struct {
 // Document - Defines the Document Model Structure
 type Document struct {
 	gorm.Model
-	Path    string `json:"path"`
-	Title   string `json:"title"`
-	Version string `json:"version"`
-	Author  string `json:"author"`
-	Body    string `json:"body"`
-	Hash    string `json:"hash"`
+	Path    string  `json:"path"`
+	Title   string  `json:"title"`
+	Version float32 `json:"version"`
+	Author  string  `json:"author"`
+	Body    string  `json:"body"`
+	Hash    string  `json:"hash"`
 }
 
 // https://www.baeldung.com/linux/sha-256-from-command-line

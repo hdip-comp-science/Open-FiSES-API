@@ -22,16 +22,26 @@ func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH,OPTIONS")
 }
 
+//  , db *gorm.DB
+// func query(db *gorm.DB) {
+// 	dbErr := db.Where("hash = ?", sum).First(&document.Document{})
+// 	if dbErr != nil {
+// 		log.Fatal(dbErr)
+// 		//  https://golang.hotexamples.com/examples/github.com.jinzhu.gorm/DB/Where/golang-db-where-method-examples.html
+// 	}
+// }
+
 // PostDocument - adds a new document
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
+	var document document.Document
 
 	// 1. parse input , type multipart/form-data
 	r.ParseMultipartForm(3 << 30) // Maximum upload of 3 MB files
 
 	// 2. retrieve data from file posted form-date
-	//    get fileHeader for filename, size and headers
-	file, fileHeader, err := r.FormFile("file") // where is the
+	//    use FromFile() to retrieve the file and handler
+	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
 		log.Warning(err)
 		http.Error(w, "Error Retrieving file from form-data", http.StatusInternalServerError)
@@ -39,8 +49,9 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer file.Close()
+
 	// generate sha256 hash value of file in memory.
-	// source: https://yourbasic.org/golang/hash-md5-sha256-string-file/
+	// ref: https://yourbasic.org/golang/hash-md5-sha256-string-file/
 	// create a new hash.Hash form crypto pkg "crypto/sha256"
 	hash := sha256.New()
 	// implments the io.Writer function, copy from src "hash" to dst "file"
@@ -51,6 +62,11 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	sum := hash.Sum(nil)
 	// convert from hex to string using "encoding/hex" pkg
 	log.Infof("%s", hex.EncodeToString(sum[:]))
+
+	sumStr := hex.EncodeToString(sum)
+	log.Infof("%s", sumStr)
+
+	// ref: https://gorm.io/docs/query.html
 
 	// print file data to console
 	log.Infof("Uploading File: %+v\n", fileHeader.Filename)
@@ -70,22 +86,38 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var document document.Document
 
-	// assign document values to document struct fileds
-	document.Path = path + fileHeader.Filename
-	document.Title = fileHeader.Filename
-	document.Version = "1.0"
-	document.Author = ""                       //TBD when auth is implemented
-	document.Hash = hex.EncodeToString(sum[:]) // `:` is needed because byte arrays cannot be directly turned to a string while slices can
+	// assign document version and an initial value of 1.0
+	var docVer float32 = document.Version + 1.0
+	log.Infof("New doc version: %v", docVer)
 
-	// Post to document service
-	document, err = h.Service.PostDocument(document)
-	if err != nil {
-		fmt.Fprintf(w, "Failed to post new document")
+	if dbErr := h.Service.DB.Where("hash = ?", sumStr).First(&document).Error; dbErr != nil {
+		log.Warnf(dbErr.Error())
+
+		document.Path = path + fileHeader.Filename
+		document.Title = fileHeader.Filename
+		document.Version = docVer
+		document.Author = ""                       //TBD when auth is implemented
+		document.Hash = hex.EncodeToString(sum[:]) // `:` is needed because byte arrays cannot be directly turned to a string while slices can
+
+		document, err = h.Service.PostDocument(document)
+		if err != nil {
+			fmt.Fprintf(w, "Failed to update document version no.")
+		}
+
+	} else {
+		// file hash value match found, update version no.
+		log.Info("record found")
+
+		document.Version = docVer + 1.0
+		log.Info(document.Version)
+
+		document, err = h.Service.UpdateDocument(document.ID, document)
+		if err != nil {
+			fmt.Fprintf(w, "Failed to update document version no.")
+		}
 	}
-	// upload to final destination path
-	//  print sha here
+
 	// write data to named file. If file does not exist WriteFile creates it.
 	err = os.WriteFile(path+fileHeader.Filename, fileBytes, 0644)
 	if err != nil {

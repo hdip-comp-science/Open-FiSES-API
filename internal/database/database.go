@@ -31,7 +31,7 @@ func NewDatabase() (*gorm.DB, error) {
 	if err != nil {
 		return db, fmt.Errorf("unable to connect to database: %v", err)
 	}
-	// Ping the DB using the credentials obtained via env variables.
+	// Call DB.Ping to confirm that connecting to the database works using the credentials obtained via connection properties.
 	if err := db.DB().Ping(); err != nil {
 		return db, err
 	}
