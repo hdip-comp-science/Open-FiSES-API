@@ -22,15 +22,6 @@ func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH,OPTIONS")
 }
 
-//  , db *gorm.DB
-// func query(db *gorm.DB) {
-// 	dbErr := db.Where("hash = ?", sum).First(&document.Document{})
-// 	if dbErr != nil {
-// 		log.Fatal(dbErr)
-// 		//  https://golang.hotexamples.com/examples/github.com.jinzhu.gorm/DB/Where/golang-db-where-method-examples.html
-// 	}
-// }
-
 // PostDocument - adds a new document
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
@@ -64,7 +55,6 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	log.Infof("%s", hex.EncodeToString(sum[:]))
 
 	sumStr := hex.EncodeToString(sum)
-	log.Infof("%s", sumStr)
 
 	// ref: https://gorm.io/docs/query.html
 
@@ -89,11 +79,14 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	// assign document version and an initial value of 1.0
 	var docVer float32 = document.Version + 1.0
-	log.Infof("New doc version: %v", docVer)
 
+	// get first matched record of hash value in documents table
 	if dbErr := h.Service.DB.Where("hash = ?", sumStr).First(&document).Error; dbErr != nil {
-		log.Warnf(dbErr.Error())
-
+		// no hash
+		log.Warnf(document.Title, dbErr.Error())
+	}
+	// if no has match check if filename exists. If so, update the version no. else post new document
+	if err := h.Service.DB.Where("title = ?", document.Title).First(&document).Error; err != nil {
 		document.Path = path + fileHeader.Filename
 		document.Title = fileHeader.Filename
 		document.Version = docVer
@@ -104,11 +97,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Fprintf(w, "Failed to update document version no.")
 		}
-
 	} else {
-		// file hash value match found, update version no.
-		log.Info("record found")
-
 		document.Version = docVer + 1.0
 		log.Info(document.Version)
 
@@ -116,6 +105,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Fprintf(w, "Failed to update document version no.")
 		}
+
 	}
 
 	// write data to named file. If file does not exist WriteFile creates it.
