@@ -6,6 +6,7 @@ import (
 
 	"github.com/Open-FiSE/go-rest-api/internal/database"
 	"github.com/Open-FiSE/go-rest-api/internal/document"
+	// using alias 'transportHTTP' to prevent conflict with net/http pkg
 	transportHTTP "github.com/Open-FiSE/go-rest-api/internal/transport/http"
 	log "github.com/sirupsen/logrus"
 )

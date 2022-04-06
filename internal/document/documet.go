@@ -61,37 +61,13 @@ func (s *Service) GetDocument(ID uint) (Document, error) {
 	return document, nil
 }
 
-// GetDocumentByPath - retrieves all documents by path (path - /sop/name/ )
-// func (s *Service) GetDocumentByPath(path string) ([]Document, error) {
-// 	var documents []Document
-// 	if result := s.DB.First(&documents).Where("path=?", path); result.Error != nil {
-// 		return []Document{}, result.Error
-// 	}
-// 	return documents, nil
-// }
-
 // PostDocument - adds a new document to the database
-
 func (s *Service) PostDocument(document Document) (Document, error) {
 	if result := s.DB.Save(&document); result.Error != nil {
 		return Document{}, result.Error
 	}
 	return document, nil
 }
-
-// func (s *Service) PostDocument(document Document) (Document, error) {
-
-// 	// Stat returns a FileInfo describing the named file.
-// 	if _, err := os.Stat(document.Path); err == nil {
-// 		log.Infof("%s file exists \n", document.Path)
-// 	} else {
-// 		if result := s.DB.Save(&document); result.Error != nil {
-// 			return Document{}, result.Error
-// 		}
-// 	}
-
-// 	return document, nil
-// }
 
 // UpdateDocument - updates a document by ID with new document info
 func (s *Service) UpdateDocument(ID uint, newDocument Document) (Document, error) {
