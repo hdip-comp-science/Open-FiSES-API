@@ -14,13 +14,13 @@ type Service struct {
 
 // Document - Defines the Document Model Structure
 type Document struct {
-	gorm.Model
-	Path    string  `json:"path"`
-	Title   string  `json:"title"`
-	Version float32 `json:"version"`
-	Author  string  `json:"author"`
-	Body    string  `json:"body"`
-	Hash    string  `json:"hash"`
+	gorm.Model         // gorm offers pre-defined fields
+	Path       string  `json:"path"`
+	Title      string  `json:"title"`
+	Version    float32 `json:"version"`
+	Author     string  `json:"author"`
+	Body       string  `json:"body"`
+	Hash       string  `json:"hash"`
 }
 
 // https://www.baeldung.com/linux/sha-256-from-command-line
@@ -52,11 +52,14 @@ func (s *Service) GetDocument(ID uint) (Document, error) {
 	}
 	// read the filename and return the contents (bytes).
 	body, err := os.ReadFile(document.Path)
+	log.Info(body)
 	if err != nil {
 		log.Error("unable to read file")
 		log.Error(err)
 	}
+
 	document.Body = string(body)
+	// log.Info(document.Body)
 
 	return document, nil
 }

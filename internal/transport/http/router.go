@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Open-FiSE/go-rest-api/internal/booking"
 	"github.com/Open-FiSE/go-rest-api/internal/document"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
@@ -11,8 +12,9 @@ import (
 
 // Handler - store a pointer to the router and document service that the app uses
 type Handler struct {
-	Router  *mux.Router
-	Service *document.Service
+	Router      *mux.Router
+	Service     *document.Service
+	BookService *booking.BookService
 }
 
 // Response - an object to store repsonses from the API
@@ -21,13 +23,14 @@ type Response struct {
 }
 
 // NewHandler - returns a pointer to a Handler
-func NewHandler(service *document.Service) *Handler {
+func NewHandler(service *document.Service, bookservice *booking.BookService) *Handler {
 	return &Handler{
-		Service: service,
+		Service:     service,
+		BookService: bookservice,
 	}
 }
 
-// Logger - is a middleware handler install globally that does request logging around all endpoints
+// Logger - is a middleware handler available globally that wraps around all endpoints
 func Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//  improves visibility by checking endpoints and paths being consumed.
@@ -52,13 +55,20 @@ func (h *Handler) SetupRoutes() {
 	// improves the way logging is handled.
 	h.Router.Use(Logger)
 
+	// Document Service Routes
 	h.Router.HandleFunc(apiPrefix+"document", h.GetAllDocuments).Methods("GET")
 	h.Router.HandleFunc(apiPrefix+"document", h.PostDocument).Methods("POST")
 	h.Router.HandleFunc(apiPrefix+"document/{id}", h.UpdateDocument).Methods("PUT")
 	h.Router.HandleFunc(apiPrefix+"document/{id}", h.GetDocument).Methods("GET")
 	h.Router.HandleFunc(apiPrefix+"document/{id}", h.DeleteDocument).Methods("DELETE")
+	h.Router.HandleFunc(apiPrefix+"upload", h.Upload).Methods("POST")
 
-	h.Router.HandleFunc(apiPrefix+"upload", h.Upload)
+	// Booking Service Routes
+	h.Router.HandleFunc(apiPrefix+"booking", h.GetAllBookings).Methods("GET")
+	h.Router.HandleFunc(apiPrefix+"booking", h.PostBooking).Methods("POST")
+	h.Router.HandleFunc(apiPrefix+"booking/{id}", h.UpdateBooking).Methods("PUT")
+	h.Router.HandleFunc(apiPrefix+"booking/{id}", h.GetBooking).Methods("GET")
+	h.Router.HandleFunc(apiPrefix+"booking/{id}", h.DeleteBooking).Methods("DELETE")
 
 	h.Router.HandleFunc(apiPrefix+"health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charcet=UTF-8")
@@ -67,5 +77,5 @@ func (h *Handler) SetupRoutes() {
 			log.Warning(err)
 		}
 	})
-	log.Info("App Setup Complete...")
+	log.Info("Routes Setup Complete...")
 }

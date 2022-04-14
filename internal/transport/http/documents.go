@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -25,16 +24,21 @@ func enableCors(w *http.ResponseWriter) {
 // PostDocument - adds a new document
 func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
-	var document document.Document
+	w.WriteHeader(http.StatusOK)
 
 	// 1. parse input , type multipart/form-data
-	r.ParseMultipartForm(3 << 30) // Maximum upload of 3 MB files
+	//    defines how bug the chunk size of the data that will be received
+	err := r.ParseMultipartForm(32 << 20) // chuck size in bytes - max upload of 32 MB files
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
-	// 2. retrieve data from file posted form-date
-	//    use FromFile() to retrieve the file and handler
+	// 2. retrieve data from file posted form-data
+	//    get a reference to the fileHeaders, they are accessible only after ParseMultipartForm is called
 	file, fileHeader, err := r.FormFile("file")
 	if err != nil {
-		log.Warning(err)
+		log.Error(err)
 		http.Error(w, "Error Retrieving file from form-data", http.StatusInternalServerError)
 		return
 	}
@@ -42,34 +46,33 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	// generate sha256 hash value of file in memory.
-	// ref: https://yourbasic.org/golang/hash-md5-sha256-string-file/
 	// create a new hash.Hash form crypto pkg "crypto/sha256"
-	hash := sha256.New()
-	// implments the io.Writer function, copy from src "hash" to dst "file"
-	if _, err := io.Copy(hash, file); err != nil {
+	sha256 := sha256.New()
+	// Copy the uploaded file to the filesystem at the specified destination
+	if _, err := io.Copy(sha256, file); err != nil {
 		log.Fatal(err)
 	}
+
 	// extract the checksum by calling its Sum function
-	sum := hash.Sum(nil)
+	sum := sha256.Sum(nil)
 	// convert from hex to string using "encoding/hex" pkg
 	log.Infof("%s", hex.EncodeToString(sum[:]))
 
-	sumStr := hex.EncodeToString(sum)
+	shaStr := hex.EncodeToString(sum)
 
-	// ref: https://gorm.io/docs/query.html
+	// Seek sets the offset for the next Read or Write to offsetback to the start of the file again
+	_, err = file.Seek(0, io.SeekStart)
+	if err != nil {
+		log.Errorf("Seek start of file error: %v", err)
+	}
 
 	// print file data to console
 	log.Infof("Uploading File: %+v\n", fileHeader.Filename)
 	log.Infof("File Size: %+v\n", fileHeader.Size)
 	log.Infof("MIME Header: %+v\n", fileHeader.Header)
 
-	// func ReadAll(r io.Reader) ([]byte, error)
-	// ReadAll is defined to read from src until EOF and returns the data it read
-	fileBytes, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Error(err)
-	}
 	path := "/app/docs/"
+
 	// Create the uploads folder if it doesn't already exist
 	err = os.MkdirAll(path, os.ModePerm)
 	if err != nil {
@@ -77,13 +80,15 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// assign document version and an initial value of 1.0
+	var document document.Document
+
+	// assign document version an initial value of 1.0
 	var docVer float32 = document.Version + 1.0
 
 	// get first matched record of hash value in documents table
-	if dbErr := h.Service.DB.Where("hash = ?", sumStr).First(&document).Error; dbErr != nil {
-		// no hash
-		log.Warnf(document.Title, dbErr.Error())
+	if dbErr := h.Service.DB.Where("hash = ?", shaStr).First(&document).Error; dbErr != nil {
+		// no hash match in db
+		log.Warnf(dbErr.Error())
 	}
 	// if no has match check if filename exists. If so, update the version no. else post new document
 	if err := h.Service.DB.Where("title = ?", document.Title).First(&document).Error; err != nil {
@@ -99,7 +104,7 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		document.Version = docVer + 1.0
-		log.Info(document.Version)
+		log.Infof("updating document version to:", document.Version)
 
 		document, err = h.Service.UpdateDocument(document.ID, document)
 		if err != nil {
@@ -108,16 +113,22 @@ func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	// write data to named file. If file does not exist WriteFile creates it.
-	err = os.WriteFile(path+fileHeader.Filename, fileBytes, 0644)
+	// Create a new file in the '/app/docs' directory
+	dst, err := os.Create(path + fileHeader.Filename)
 	if err != nil {
-		log.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer dst.Close()
+
+	// Copy the uploaded file to the created file on the filesystem.
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	// 4. return whether or not this has been successful
 	log.Infof("Successfully uploaded file: %s\n", document.Title)
-	w.WriteHeader(http.StatusOK)
-
 }
 
 // GetDocument - retrieve a single document by ID
@@ -128,6 +139,7 @@ func (h *Handler) GetDocument(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
+	// GetDocument is expecting a uint, parse string and set to base 10, size 64
 	i, err := strconv.ParseUint(id, 10, 64)
 	if err != nil {
 		fmt.Fprintf(w, "Unable to parse UINT from ID")

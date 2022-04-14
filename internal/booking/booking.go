@@ -6,7 +6,7 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
-type Service struct {
+type BookService struct {
 	DB *gorm.DB
 }
 
@@ -22,10 +22,14 @@ type Job struct {
 // Booking has one Job association and one Customer
 type Booking struct {
 	gorm.Model
-	ID       uint
-	Date     time.Time
-	Customer Customer `gorm:"foreignKey:ID"` //Embeded Type
-	Job      Job      `gorm:"foreignKey:ID"` //Embeded Type
+	// bookingNo uint
+	Summary       string
+	Description   string
+	Location      string
+	StartDateTime time.Time
+	EndDateTime   time.Time
+	Customer      Customer `gorm:"foreignKey:ID"` //Embeded Type
+	Job           Job      `gorm:"foreignKey:ID"` //Embeded Type
 }
 
 // Customer may have 0-* bookings
@@ -44,8 +48,15 @@ type BookingService interface {
 	GetAllBookings() ([]Booking, error)
 }
 
+// NewService - takes in a pointer to the DB & returns a pointer to a new booking service
+func NewService(db *gorm.DB) *BookService {
+	return &BookService{
+		DB: db,
+	}
+}
+
 // GetBooking - retrieves bookings by ID from the database
-func (s *Service) GetBooking(ID uint) (Booking, error) {
+func (s *BookService) GetBooking(ID uint) (Booking, error) {
 	var booking Booking // define a new booking variable
 	// retireive the 1st booking from the DB with the passed in Id & populate the booking var with the result obj
 	if result := s.DB.First(&booking, ID); result.Error != nil {
@@ -54,7 +65,7 @@ func (s *Service) GetBooking(ID uint) (Booking, error) {
 	return booking, nil
 }
 
-func (s *Service) PostBooking(booking Booking) (Booking, error) {
+func (s *BookService) PostBooking(booking Booking) (Booking, error) {
 	if result := s.DB.Save(&booking); result.Error != nil {
 		return Booking{}, result.Error
 	}
@@ -62,7 +73,7 @@ func (s *Service) PostBooking(booking Booking) (Booking, error) {
 }
 
 // UpdateDocument - updates a booking by ID with new document info
-func (s *Service) UpdateBooking(ID uint, newBooking Booking) (Booking, error) {
+func (s *BookService) UpdateBooking(ID uint, newBooking Booking) (Booking, error) {
 	booking, err := s.GetBooking(ID)
 	if err != nil {
 		return Booking{}, err
@@ -75,7 +86,7 @@ func (s *Service) UpdateBooking(ID uint, newBooking Booking) (Booking, error) {
 }
 
 // DeleteBooking - deletes a booking from the database by ID
-func (s *Service) DeleteBooking(ID uint) error {
+func (s *BookService) DeleteBooking(ID uint) error {
 	// pass in empty comment obj and ID of booking to delete
 	if result := s.DB.Delete(&Booking{}, ID); result.Error != nil {
 		return result.Error
@@ -85,7 +96,7 @@ func (s *Service) DeleteBooking(ID uint) error {
 }
 
 // GetAllBookings() - retrieves all bookings from the database
-func (s *Service) GetAllBookings() ([]Booking, error) {
+func (s *BookService) GetAllBookings() ([]Booking, error) {
 	var bookings []Booking
 	if result := s.DB.Find(&bookings); result.Error != nil {
 		return bookings, result.Error

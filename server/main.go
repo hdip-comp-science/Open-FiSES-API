@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Open-FiSE/go-rest-api/internal/booking"
 	"github.com/Open-FiSE/go-rest-api/internal/database"
 	"github.com/Open-FiSE/go-rest-api/internal/document"
+
 	// using alias 'transportHTTP' to prevent conflict with net/http pkg
 	transportHTTP "github.com/Open-FiSE/go-rest-api/internal/transport/http"
 	log "github.com/sirupsen/logrus"
@@ -47,8 +49,9 @@ func (app *App) Run() error {
 	}
 
 	documentService := document.NewService(db)
+	bookingService := booking.NewService(db)
 
-	handler := transportHTTP.NewHandler(documentService)
+	handler := transportHTTP.NewHandler(documentService, bookingService)
 	handler.SetupRoutes()
 
 	if err := http.ListenAndServe(port, handler.Router); err != nil {
