@@ -2,29 +2,40 @@
 
 General overview and what you need to run this Go project.
 
-## Current Status
-Objective is to build a service that handles documents, get, add, update and delete. 
-This project implements a REST HTTP Endpoints with the Gorilla Mux router. A Postgres databse runs locally with Docker. Making use of the `gorm` package to talk to the database. 
+## About the Application
 
+This project implements a REST API server with the Gorilla Mux router. Objective is to build a service that carries out CRUS operations on both bookings and document services. The base URL for exposing HTTP endpoints is http://localhost:4000. A Postgres databse runs locally with Docker. Making use of the `gorm` package to talk to the database. 
+
+
+## Prerequisites
+- Familiarity with Go and PostgreSQL.
+- You have Go and PostgreSQL installed on your machine.
 
 ## Usage
+
+__Clone__ the repository to your machine: <br>
+: ``` git clone https://github.com/hdip-comp-science/Open-FiSES-API.git ```
+: ``` cd Your_Repo_Directory ```
+
+If you have issue with dependecies, trying the following: <br>
+: `go mod init github.com/Open-FiSE/go-rest-api`
+
 In order to run this API, you must have somewhere to store the document data. PostgreSQL is being used for storage. I chose to run Postgres locally with Docker. Use the following command:
-`docker run --name postgres-db -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres` <br>
-Check your running container using `docker ps` command. You should be running Postgres db locally now. For now, export the database environment variables from the CLI:
-```
- export DB_USERNAME=postgres
- export DB_PASSWORD=postgres
- export DB_HOST=localhost
- export DB_TABLE=postgres
- export DB_PORT=5432
- export DB_DB=postgres
-```
-Next, run the application: `go run server/main.go`. It will run through the connection logic and your API server should be accessible. Open Postman to test the document service endpoints.
+`docker run --name postgres-db -e POSTGRES_PASSWORD=postgres -p 5433:5432 -d postgres` <br>
+Check your running container using `docker ps` command. You should be running Postgres database locally now. 
+
+Next, use the `Run` method to start the application: `go run server/main.go`. It will run through the connection logic and your API server should be accessible. Open Postman API platform or similar software to test the service endpoints. Example requests to the API service include: <br>
+
+
+- __Creating__ a new document to a valid POST request `/document`
+- __Updating__ a document in response to a valid PUT request `/document/{id}`
+- __Deleting__ an existing document to a valid DELETE request `/document/{id}`
+- __Getting__ an existing document based on ID `/document/{id}`, and fetching a __list__ of all documents `/documents`
 
 
 ## Project Package Imports
 
-This is not an entire list of package imports but one's I thought are worth mentioning.
+This is not an entire list of package imports utilised but one's I think are important.
 
 - **Logrus** <br>
   `Logrus` is a structured logger for Go (golang), completely API compatible with the standard library logger. Logrus has the following characteristics:
@@ -47,17 +58,27 @@ This is not an entire list of package imports but one's I thought are worth ment
 
   <em>Side Note</em>: go-gorm has a prometheus package. Possible to monitor DB status with [`go-gorm/prometheus`](https://github.com/go-gorm/prometheus). <br>
 
+- **encoding/json** <br>
+  The `encoding/json` package is a standard library provided by GO.It is the most popular data format for sending and receiving data across the web. This package can automatically encode Go objects to JSON format. This is known as marshalling. The marshalling function accepts any Go data type and returns two values: a byte slice of the encoded JSON and an error. When dealing with user-genreated data and formatting it to JSON, it provides a highlevel of interoperability. Data stored in JSON makes it easy to exchange data and for database migration.<br>
+
 - **net/http** <br>
   Package http provides HTTP client and server implementations.
-  Get, Head, Post, and PostForm make HTTP (or HTTPS) requests: <br>
+  Get, Head, Post, and PostForm make HTTP (or HTTPS) requests. <br>
+
+- **crypto/sha256** <br>
+  The `crypto` package implements SHA224 and SHA256 hash algorithms as defined in FIPS 180-4.  This package plays an important role in the business logic of file uploading handler. The crypto package computes the hash value of the file and stores the value in the database. The hash value representation of the file is checked everytime athe upload endpoint is called.
 
 - **os** <br>
   Package os provides a platform-independent interface to operating system functionality. The os interface is intended to be uniform across all operating systems. Features not generally available appear in the system-specific package syscall. 
 
 ## References
-
-[1] [logrus documentation](https://pkg.go.dev/github.com/sirupsen/logrus#section-documentation)
-[2] [gorrilla/mux](https://github.com/gorilla/mux)
-[3] [GORM`](https://github.com/go-gorm/gorm)
-[4] [Golang ORM Tutorial](https://tutorialedge.net/golang/golang-orm-tutorial/)
-[5] [TutorialEdge.net](https://tutorialedge.net/)
+[1] [Golang File Upload](https://gabrieltanner.org/blog/golang-file-uploading)
+[2] [Hash Checksum](https://yourbasic.org/golang/hash-md5-sha256-string-file/)
+[3] [Go REST API Tutorial](https://tutorialedge.net/golang/creating-restful-api-with-golang/)
+[4] [logrus documentation](https://pkg.go.dev/github.com/sirupsen/logrus#section-documentation)
+[5] [gorrilla/mux](https://github.com/gorilla/mux)
+[6] [GORM](https://github.com/go-gorm/gorm)
+[7] [JSON](https://pkg.go.dev/encoding/json)
+[8] [SHA256](https://pkg.go.dev/crypto/sha256#example-New)
+[9] [Golang ORM Tutorial](https://tutorialedge.net/golang/golang-orm-tutorial/)
+[10] [TutorialEdge.net](https://tutorialedge.net/)
