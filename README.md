@@ -1,4 +1,4 @@
-# Create-GO-API
+# Go-API-Application
 
 General overview and what you need to run this Go project.
 
@@ -14,11 +14,13 @@ This project implements a REST API server with the Gorilla Mux router. Objective
 ## Usage
 
 __Clone__ the repository to your machine: <br>
-: ``` git clone https://github.com/hdip-comp-science/Open-FiSES-API.git ```
-: ``` cd Your_Repo_Directory ```
+ ``` 
+ git clone https://github.com/hdip-comp-science/Open-FiSES-API.git 
+ cd Your_Repo_Directory 
+ ```
 
 If you have issue with dependecies, trying the following: <br>
-: `go mod init github.com/Open-FiSE/go-rest-api`
+`go mod init github.com/Open-FiSE/go-rest-api`
 
 In order to run this API, you must have somewhere to store the document data. PostgreSQL is being used for storage. I chose to run Postgres locally with Docker. Use the following command:
 `docker run --name postgres-db -e POSTGRES_PASSWORD=postgres -p 5433:5432 -d postgres` <br>
