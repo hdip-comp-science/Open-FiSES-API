@@ -1,4 +1,4 @@
-# Go-API-Application
+# Go-REST-API
 
 General overview and what you need to run this Go project.
 
